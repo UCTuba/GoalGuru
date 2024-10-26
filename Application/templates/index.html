@@ -20,8 +20,8 @@
         }
 
         .custom-checkbox:checked {
-            background-color: #fa8381; /* Green background */
-            border: 2px solid #fa8381; /* Green border */
+            background-color: #16b73c; /* Green background */
+            border: 2px solid #4A5568; /* Green border */
         }
 
         .custom-checkbox:checked::after {
@@ -43,11 +43,10 @@
         <div class="flex items-center justify-between border-b pb-2 mb-4">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-check-square text-xl"></i>
-                <h1 class="text-xl font-semibold">Tasks</h1>
-                <i class="fas fa-chevron-down text-sm"></i>
+                <h1 class="text-xl font-semibold">GoalGuru</h1>
             </div>
             <div class="flex space-x-4">
-                <a href="/" class="text-gray-600 hover:text-gray-800">Home</a>
+                <a href="/" class="text-Black-600 hover:text-gray-800">POLMON Instruments Pvt Ltd.</a>
                 <a href="#" class="text-gray-600 hover:text-gray-800">Messages</a>
                 <a href="#" class="text-gray-600 hover:text-gray-800">About</a>
             </div>
@@ -55,7 +54,7 @@
 
         <!-- Navigation Buttons -->
         <div class="flex space-x-4 mb-4">
-            <button class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Open tasks</button>
+            <a href="{{ url_for('index') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Open tasks</a>
             <a href="{{ url_for('completed_tasks') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Completed tasks</a>
             <a href="{{ url_for('create') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Create a task</a>
         </div>
@@ -78,19 +77,17 @@
             <h3 class="text-xl font-semibold mt-4">{{ department }} ({{ tasks | selectattr('department', 'equalto', department) | list | length }})</h3>  <!-- Department Heading with Task Count -->
             <ul class="space-y-2">
                 {% for task in tasks if task.department == department %}
-                <li class="flex items-center space-x-2 p-4 border rounded shadow-sm transition-all duration-200 hover:bg-blue-100 cursor-pointer">
+                <li id="task-{{ task.id }}" class="flex items-center space-x-2 p-4 border rounded shadow-sm transition-all duration-200 hover:bg-green-100 cursor-pointer">
                     <a href="{{ url_for('view_task', task_id=task.id) }}" class="flex items-center w-full">
-                        <form action="{{ url_for('complete_task', task_id=task.id) }}" method="POST" class="mr-4">
-                            <input type="checkbox" class="custom-checkbox" 
-                                   onchange="this.form.submit()" 
-                                   {% if task.completed %} checked {% endif %} 
-                                   onclick="this.checked ? confirm('Mark as complete?') : confirm('Mark as incomplete?')">
-                        </form>
+                        <input type="checkbox" class="custom-checkbox mr-4" 
+                               {% if task.completed %} checked {% endif %} 
+                               onclick="completeTask(event, {{ task.id }}, this.checked)">
+
                         <div class="flex-1">
                             <span class="text-lg font-medium text-black-600 hover:underline">{{ task.title }}</span>
                             <p class="text-gray-600">{{ task.description }}</p>
                         </div>
-                        <div>
+                        <div class="flex space-x-4">
                             <p class="text-sm text-gray-500">Assigned: {{ task.assignment_date }}</p>
                             <p class="text-sm text-gray-500">Due: {{ task.target_date }}</p>
                         </div>
@@ -101,5 +98,37 @@
             {% endfor %}
         </div>
     </div>
+
+    <script>
+        function completeTask(event, taskId, isChecked) {
+            event.preventDefault(); // Prevent default checkbox behavior
+            let message = isChecked ? "Mark as complete?" : "Mark as incomplete?";
+            if (confirm(message)) {
+                // Send a POST request to update task completion
+                fetch(`/complete/${taskId}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ completed: isChecked })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Hide the task item if marked complete
+                        if (isChecked) {
+                            document.getElementById(`task-${taskId}`).style.display = "none";
+                        }
+                    } else {
+                        alert("Failed to update task status.");
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            } else {
+                // Revert checkbox state if action is canceled
+                event.target.checked = !isChecked;
+            }
+        }
+    </script>
 </body>
 </html>
