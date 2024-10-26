@@ -1,0 +1,46 @@
+<!-- view_task.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-lg mx-auto bg-white p-6 rounded shadow">
+        <h1 class="text-2xl font-bold">{{ task.title }}</h1>
+        <p class="text-gray-600 mt-2">{{ task.description }}</p>
+        
+        
+        
+        <!-- Edit Description Button -->
+        <form method="POST" action="{{ url_for('view_task', task_id=task.id) }}" class="mt-4">
+            <textarea name="description" class="w-full p-2 border rounded mb-2">{{ task.description }}</textarea>
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Edit Description</button>
+        </form>
+        
+        <!-- Edit Due Date -->
+        <div class="mt-4">
+            <p class="text-sm text-gray-500">Current Due Date: {{ task.target_date }}</p>
+            <form method="POST" action="{{ url_for('view_task', task_id=task.id) }}">
+                <label class="block text-sm font-semibold mt-2">Update Due Date</label>
+                <input type="date" name="target_date" class="w-full border rounded p-2">
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded mt-2">Update Due Date</button>
+            </form>
+            <p class="text-sm mt-2">Edit Count: {{ task.edit_count }}</p>
+            
+            <!-- Display Past Due Dates -->
+            <h3 class="font-semibold text-lg mt-4">Past Due Dates</h3>
+            <ul class="list-disc pl-5 text-gray-600">
+                {% for past_date in task.due_date_history or [] %}
+                    <li>{{ past_date }}</li>
+                    
+                {% endfor %}
+                
+            </ul>
+            <a href="/" class="text-blue-600 hover:underline">Back to Tasks</a>
+        </div>
+    </div>
+</body>
+</html>
