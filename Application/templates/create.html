@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New Task</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white rounded-lg shadow-lg w-96 p-6">
+        <h2 class="text-xl font-semibold"><i class="fas fa-check-square"></i> Create New Task</h2>
+
+        <form method="POST" action="{{ url_for('create') }}">
+            <!-- Task Title -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Task Name</label>
+                <input type="text" name="title" required class="mt-1 block w-full border rounded-md py-2 px-3">
+            </div>
+
+            <!-- Department Selection -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Department</label>
+                <select name="department" class="block w-full border rounded-md py-2 px-3">
+                    <option value="Finance">Finance</option>
+                    <option value="Purchase-PIPL">Purchase-PIPL</option>
+                    <option value="Purchase-PVPL">Purchase-PVPL</option>
+                    <option value="Purchase-PPCL">Purchase-PPCL</option>
+                    <option value="RM Stores">RM Stores</option>
+                    <option value="Commercial-PIPL">Commercial-PIPL</option>
+                    <option value="Commercial-PVPL">Commercial-PVPL</option>
+                    <option value="Commercial-PPCL">Commercial-PPCL</option>
+                </select>
+            </div>
+
+            <!-- Assigned User -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Assign User</label>
+                <select name="assigned_user" class="block w-full border rounded-md py-2 px-3">
+                    <option value="">Select User</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Assignment Date -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Assigned Date</label>
+                <input type="text" name="assignment_date" id="assignment_date" class="block w-full border rounded-md py-2 px-3">
+            </div>
+
+            <!-- Target Date -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Target Date</label>
+                <input type="text" name="target_date" id="target_date" class="block w-full border rounded-md py-2 px-3">
+            </div>
+
+            <!-- Task Description -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Description</label>
+                <textarea name="description" rows="3" class="mt-1 block w-full border rounded-md py-2 px-3"></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end">
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md">Create Task</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Flatpickr Date Picker JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        flatpickr("#assignment_date", { dateFormat: "Y-m-d" });
+        flatpickr("#target_date", { dateFormat: "Y-m-d" });
+    </script>
+</body>
+</html>
