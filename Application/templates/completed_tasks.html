@@ -15,8 +15,13 @@
         
         <ul class="space-y-2">
             {% for task in tasks %}
-            <li class="flex flex-col border-b py-2">
-                <span>{{ task.title }} - {{ task.department }}</span>
+            <li class="flex flex-col border-b py-2 group">
+                <div class="flex justify-between items-center w-full">
+                    <span>{{ task.title }} - {{ task.department }}</span>
+                    <form action="{{ url_for('revert_task', task_id=task.id) }}" method="POST" class="hidden group-hover:block">
+                        <button class="px-2 py-1 bg-red-500 text-white rounded">Revert</button>
+                    </form>
+                </div>
                 <span class="text-gray-500">
                     Completed on {{ task.completed_date }} 
                     {% if task.target_date %}
