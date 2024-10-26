@@ -1,6 +1,6 @@
 from task_tracker import create_app, db
 from task_tracker.models import Task, User
-from flask import render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 
 app = create_app()
@@ -15,9 +15,10 @@ def index():
     elif sort == 'target_date':
         tasks = Task.query.order_by(Task.target_date).all()
     else:
-        tasks = Task.query.all()
+        tasks = Task.query.filter_by(completed=False).all()  # Only show incomplete tasks
         
     return render_template('index.html', tasks=tasks)
+
 @app.route('/completed_tasks')
 def completed_tasks():
     completed_tasks = Task.query.filter_by(completed=True).all()
@@ -51,19 +52,35 @@ def create():
     
     users = User.query.all()
     return render_template('create.html', users=users)
+
 @app.route('/complete/<int:task_id>', methods=['POST'])
 def complete_task(task_id):
+    if request.is_json:  # Check if the request contains JSON data
+        data = request.get_json()
+        completed = data.get("completed", False)
+        
+        # Retrieve the task from the database and update completion status
+        task = Task.query.get(task_id)
+        if task:
+            task.completed = completed
+            if completed:
+                task.completed_date = datetime.now().date()  # Record completion date
+            else:
+                task.completed_date = None  # Clear the completion date when marking incomplete
+            db.session.commit()
+            return jsonify({"success": True}), 200
+        return jsonify({"success": False, "error": "Task not found"}), 404
+    return jsonify({"success": False, "error": "Unsupported Media Type"}), 415
+
+@app.route('/revert/<int:task_id>', methods=['POST'])
+def revert_task(task_id):
     task = Task.query.get(task_id)
-    if task:
-        # Toggle the completion status and update the completed_date accordingly
-        if task.completed:
-            task.completed = False
-            task.completed_date = None  # Clear the completion date when marking incomplete
-        else:
-            task.completed = True
-            task.completed_date = datetime.now().date()  # Record completion date
+    if task and task.completed:
+        task.completed = False
+        task.completed_date = None  # Remove completion date
         db.session.commit()
-    return redirect(url_for('index'))
+    return redirect(url_for('completed_tasks'))
+
 @app.route('/task/<int:task_id>', methods=['GET', 'POST'])
 def view_task(task_id):
     task = Task.query.get(task_id)
@@ -88,7 +105,6 @@ def view_task(task_id):
         return redirect(url_for('view_task', task_id=task_id))
     
     return render_template('view_task.html', task=task)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
