@@ -7,21 +7,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
-        /* Custom styles for checkbox */
+        /* Existing checkbox styles */
         .custom-checkbox {
             appearance: none;
             width: 1.5rem;
             height: 1.5rem;
             background-color: white;
-            border: 2px solid #4A5568; /* Gray border */
-            border-radius: 0.75rem; /* Rounded corners */
+            border: 2px solid #4A5568;
+            border-radius: 0.75rem;
             cursor: pointer;
             position: relative;
         }
 
         .custom-checkbox:checked {
-            background-color: #16b73c; /* Green background */
-            border: 2px solid #4A5568; /* Green border */
+            background-color: #16b73c;
+            border: 2px solid #4A5568;
         }
 
         .custom-checkbox:checked::after {
@@ -31,13 +31,31 @@
             left: 0.38rem;
             width: 0.5rem;
             height: 0.8rem;
-            border: solid white; /* White checkmark */
-            border-width: 0rem 0.1rem 0.1rem 0rem; /* Only right and bottom */
+            border: solid white;
+            border-width: 0rem 0.1rem 0.1rem 0rem;
             transform: rotate(45deg);
         }
+
+        /* "X" mark for delete mode */
+        .delete-checkbox {
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+            display: none;
+            margin-left: auto;
+        }
+
+        /* Show delete marks only when delete mode is active */
+        .delete-mode .delete-checkbox {
+            display: inline;
+        }
+        body {
+            background-color: #c9c0ff;
+        }
+
     </style>
 </head>
-<body class="bg-white text-gray-800 font-sans">
+<body class="bg-white text-gray-800 font-sans style=background-color: #c9c0ff;">
     <div class="max-w-4xl mx-auto p-4">
         <!-- Header -->
         <div class="flex items-center justify-between border-b pb-2 mb-4">
@@ -46,20 +64,30 @@
                 <h1 class="text-xl font-semibold">GoalGuru</h1>
             </div>
             <div class="flex space-x-4">
-                <a href="/" class="text-Black-600 hover:text-gray-800">POLMON Instruments Pvt Ltd.</a>
-                <a href="#" class="text-gray-600 hover:text-gray-800">Messages</a>
-                <a href="#" class="text-gray-600 hover:text-gray-800">About</a>
+                <a href="/" class="text-Black-600 hover:text-gray-850">POLMON Instruments Pvt Ltd.</a>
             </div>
         </div>
 
-        <!-- Navigation Buttons -->
+        <!-- Navigation and Sorting (unchanged) -->
         <div class="flex space-x-4 mb-4">
             <a href="{{ url_for('index') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Open tasks</a>
             <a href="{{ url_for('completed_tasks') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Completed tasks</a>
             <a href="{{ url_for('create') }}" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">Create a task</a>
+            <button id="delete-toggle" class="px-4 py-2 bg-red-500 text-white rounded">Delete</button>
         </div>
+<!-- Search Form -->
+<div class="mb-4">
+    <form method="GET" action="{{ url_for('index') }}" class="flex items-center mb-4">
+        <input type="text" name="search" placeholder="Search completed tasks..." value="{{ search_query }}"
+                   class="px-4 py-2 border border-gray-400 rounded">
+            <button type="submit" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">
+                Search
+            </button>
+        <a href="{{ url_for('index') }}" class="bg-gray-100 text-black px-2 py-2 rounded-md ml-1">Clear</a> <!-- Clear Search Button -->
+    </form>
+</div>
 
-        <!-- Sorting Buttons -->
+        <!-- Sorting Buttons (unchanged) -->
         <div class="flex space-x-4 mb-4">
             <form method="GET" action="/">
                 <a href="/?sort=assigned_date" class="px-4 py-2 bg-gray-200 rounded {{ 'bg-black text-white' if sort == 'assigned_date' else 'bg-gray-200' }}">Sort by Assigned Date</a>
@@ -69,12 +97,16 @@
 
         <!-- Task List -->
         <div>
-            <h2 class="text-lg font-semibold mb-2">You have {{ tasks|length }} open tasks</h2>
+            <h2 class="text-lg font-semibold mb-2">
+                You have <span id="open-task-count">{{ tasks|length }}</span> open tasks
+            </h2>
+            
 
-            {% set departments = tasks | map(attribute='department') | unique %}  <!-- Get unique departments -->
+
+            {% set departments = tasks | map(attribute='department') | unique %}
 
             {% for department in departments %}
-            <h3 class="text-xl font-semibold mt-4">{{ department }} ({{ tasks | selectattr('department', 'equalto', department) | list | length }})</h3>  <!-- Department Heading with Task Count -->
+            <h3 class="text-xl font-semibold mt-4">{{ department }} ({{ tasks | selectattr('department', 'equalto', department) | list | length }})</h3>
             <ul class="space-y-2">
                 {% for task in tasks if task.department == department %}
                 <li id="task-{{ task.id }}" class="flex items-center space-x-2 p-4 border rounded shadow-sm transition-all duration-200 hover:bg-green-100 cursor-pointer">
@@ -91,7 +123,13 @@
                             <p class="text-sm text-gray-500">Assigned: {{ task.assignment_date }}</p>
                             <p class="text-sm text-gray-500">Due: {{ task.target_date }}</p>
                         </div>
+
                     </a>
+                    <div class="flex justify-end items-center">
+                        <span id="due-time-{{ task.id }}" class="text-sm font-semibold"></span>
+                    </div>
+                    
+                    <span class="delete-checkbox" onclick="selectTaskToDelete({{ task.id }})">X</span>
                 </li>
                 {% endfor %}
             </ul>
@@ -100,35 +138,130 @@
     </div>
 
     <script>
-        function completeTask(event, taskId, isChecked) {
-            event.preventDefault(); // Prevent default checkbox behavior
-            let message = isChecked ? "Mark as complete?" : "Mark as incomplete?";
-            if (confirm(message)) {
-                // Send a POST request to update task completion
-                fetch(`/complete/${taskId}`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ completed: isChecked })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Hide the task item if marked complete
-                        if (isChecked) {
-                            document.getElementById(`task-${taskId}`).style.display = "none";
-                        }
-                    } else {
-                        alert("Failed to update task status.");
-                    }
-                })
-                .catch(error => console.error("Error:", error));
+        let deleteMode = false;
+        let selectedTasks = new Set();
+
+        document.getElementById('delete-toggle').addEventListener('click', function() {
+            deleteMode = !deleteMode;
+            document.body.classList.toggle('delete-mode', deleteMode);
+
+            if (!deleteMode && selectedTasks.size > 0) {
+                deleteSelectedTasks();
+            }
+        });
+
+        function selectTaskToDelete(taskId) {
+            if (!deleteMode) return;
+
+            let taskElement = document.getElementById(`task-${taskId}`);
+            if (selectedTasks.has(taskId)) {
+                selectedTasks.delete(taskId);
+                taskElement.classList.remove('bg-red-100');
             } else {
-                // Revert checkbox state if action is canceled
-                event.target.checked = !isChecked;
+                selectedTasks.add(taskId);
+                taskElement.classList.add('bg-red-100');
             }
         }
-    </script>
+
+        function deleteSelectedTasks() {
+    fetch('/delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tasks: Array.from(selectedTasks) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove selected tasks from the UI
+            selectedTasks.forEach(taskId => {
+                document.getElementById(`task-${taskId}`).style.display = 'none';
+            });
+            selectedTasks.clear();
+            updateTaskCount();
+        } else {
+            alert('Error deleting tasks: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+
+function completeTask(event, taskId, isChecked) {
+    event.preventDefault();
+    let message = isChecked ? "Mark as complete?" : "Mark as incomplete?";
+    if (confirm(message)) {
+        fetch(`/complete/${taskId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ completed: isChecked })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (isChecked) {
+                    document.getElementById(`task-${taskId}`).style.display = "none";
+                }
+                updateTaskCount(data.open_task_count);
+            } else {
+                alert("Failed to update task status.");
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    } else {
+        event.target.checked = !isChecked;
+    }
+}
+
+
+        function updateTaskCount() {
+    fetch('/count_tasks')
+        .then(response => response.json())
+        .then(data => {
+            if (data.open_task_count !== undefined) {
+                document.getElementById("open-task-count").textContent = data.open_task_count;
+            }
+        })
+        .catch(error => console.error("Error fetching task count:", error));
+}
+function updateDueTime() {
+    const tasks = {{ tasks | tojson }};
+    
+    tasks.forEach(task => {
+        const dueElement = document.getElementById(`due-time-${task.id}`);
+        
+        if (task.target_date) {
+            const targetDate = new Date(task.target_date);
+            const today = new Date();
+            const diffInTime = targetDate - today;
+            const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
+
+            // Clear any previous classes
+            dueElement.classList.remove("text-green-500", "text-orange-500", "text-red-500", "text-gray-500");
+            
+            if (diffInDays > 1) {
+                dueElement.textContent = `${diffInDays} days remaining`;
+                dueElement.classList.add("text-green-500");
+            } else if (diffInDays === 0) {
+                dueElement.textContent = "Due today";
+                dueElement.classList.add("text-orange-500");
+            } else if (diffInDays === 1) {
+                dueElement.textContent = "1 day remaining";
+                dueElement.classList.add("text-orange-500");
+            } else {
+                dueElement.textContent = `${Math.abs(diffInDays)} days overdue`;
+                dueElement.classList.add("text-red-500");
+            }
+        } else {
+            dueElement.textContent = "No due date";
+            dueElement.classList.add("text-gray-500");
+        }
+    });
+}
+
+    // Call the function on page load to update all tasks
+    document.addEventListener("DOMContentLoaded", updateDueTime);
+</script>
 </body>
 </html>
