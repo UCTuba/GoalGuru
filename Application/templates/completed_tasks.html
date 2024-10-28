@@ -13,36 +13,51 @@
             <a href="/" class="text-blue-600 hover:underline">Back to Tasks</a>
         </div>
         
-        <ul class="space-y-2">
-            {% for task in tasks %}
-            <li class="flex flex-col border-b py-2 group">
-                <div class="flex justify-between items-center w-full">
-                    <span>{{ task.title }} - {{ task.department }}</span>
-                    <form action="{{ url_for('revert_task', task_id=task.id) }}" method="POST" class="hidden group-hover:block">
-                        <button class="px-2 py-1 bg-red-500 text-white rounded">Revert</button>
-                    </form>
-                </div>
-                <span class="text-gray-500">
-                    Completed on {{ task.completed_date }} 
-                    {% if task.target_date %}
-                        {% if task.completed_date %}
-                            {% if task.completed_date > task.target_date %}
-                                <span class="text-red-500">Late by {{ (task.completed_date - task.target_date).days }} days</span>
-                            {% elif task.completed_date < task.target_date %}
-                                <span class="text-green-500">Early by {{ (task.target_date - task.completed_date).days }} days</span>
+        <!-- Search Form -->
+        <form method="GET" action="{{ url_for('completed_tasks') }}" class="mb-4">
+            <input type="text" name="search" placeholder="Search completed tasks..." value="{{ search_query }}"
+                   class="px-4 py-2 border border-gray-400 rounded">
+            <button type="submit" class="px-4 py-2 bg-green-100 text-black-700 border border-green-700 rounded">
+                Search
+            </button>
+            <a href="{{ url_for('completed_tasks') }}" class="bg-gray-100 text-black px-2 py-2 rounded-md ml-1">Clear</a>
+        </form>
+
+        {% for department, tasks in tasks_by_department.items() %}
+            <h2 class="text-lg font-semibold mt-4">{{ department }}</h2>
+            <ul class="space-y-2">
+                {% for task in tasks %}
+                <li class="flex flex-col border-b py-2 group">
+                    <div class="flex justify-between items-center w-full">
+                        <span>{{ task.title }}</span>
+                        <form action="{{ url_for('revert_task', task_id=task.id) }}" method="POST" class="hidden group-hover:block">
+                            <button class="px-2 py-1 bg-red-500 text-white rounded">Revert</button>
+                        </form>
+                    </div>
+                    <span class="text-gray-500">
+                        Completed on {{ task.completed_date }}
+                        {% if task.target_date %}
+                            {% if task.completed_date %}
+                                {% if task.completed_date > task.target_date %}
+                                    <span class="text-red-500">Late by {{ (task.completed_date - task.target_date).days }} days</span>
+                                {% elif (task.target_date - task.completed_date).days == 1 %}
+                                    <span class="text-green-500">Early by 1 day</span>        
+                                {% elif task.completed_date == task.target_date %}
+                                    <span class="text-orange-500">On time</span>
+                                {% else %}
+                                    <span class="text-green-500">Early by {{ (task.target_date - task.completed_date).days }} days</span>
+                                {% endif %}
                             {% else %}
-                                <span class="text-gray-500">On time</span>
+                                <span class="text-gray-500">Completion date not available</span>
                             {% endif %}
                         {% else %}
-                            <span class="text-gray-500">Completion date not available</span>
+                            <span class="text-gray-500">No target date set</span>
                         {% endif %}
-                    {% else %}
-                        <span class="text-gray-500">No target date set</span>
-                    {% endif %}
-                </span>
-            </li>
-            {% endfor %}
-        </ul>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        {% endfor %}
     </div>
 </body>
 </html>
