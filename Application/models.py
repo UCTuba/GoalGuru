@@ -1,7 +1,7 @@
 from . import db  # Import db from __init__.py
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text, PickleType
 from sqlalchemy.orm import relationship
-
+from datetime import date
 from sqlalchemy.ext.mutable import MutableList
 
 class User(db.Model):
@@ -23,3 +23,15 @@ class Task(db.Model):
     edit_count = Column(Integer, default=0)
     due_date_history = db.Column(MutableList.as_mutable(PickleType), default=[])
     assigned_user = relationship('User', backref='tasks')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'department': self.department,
+            'assignment_date': self.assignment_date.isoformat() if self.assignment_date else None,
+            'target_date': self.target_date.isoformat() if self.target_date else None,
+            'completed': self.completed,
+            'completed_date': self.completed_date.isoformat() if self.completed_date else None,  # Add this line
+        }
