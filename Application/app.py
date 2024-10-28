@@ -9,20 +9,72 @@ app = create_app()
 def index():
     # Check for sorting query parameter
     sort = request.args.get('sort')
+    search_query = request.args.get('search', '')
 
+    # Filter tasks based on the search query
+    tasks = Task.query.filter(
+        Task.title.ilike(f'%{search_query}%'),
+        Task.completed == False
+    )
     if sort == 'assignment_date':
-        tasks = Task.query.order_by(Task.assignment_date).all()
+        tasks = Task.query.filter_by(completed=False).order_by(Task.assignment_date).all()
     elif sort == 'target_date':
-        tasks = Task.query.order_by(Task.target_date).all()
+        tasks = Task.query.filter_by(completed=False).order_by(Task.target_date).all()
     else:
         tasks = Task.query.filter_by(completed=False).all()  # Only show incomplete tasks
-        
-    return render_template('index.html', tasks=tasks)
+
+    # Convert tasks to a serializable format
+    tasks_list = [task.to_dict() for task in tasks]
+
+    return render_template('index.html', tasks=tasks_list, search_query=search_query)
+
+
+from datetime import datetime
 
 @app.route('/completed_tasks')
 def completed_tasks():
-    completed_tasks = Task.query.filter_by(completed=True).all()
-    return render_template('completed_tasks.html', tasks=completed_tasks)
+    search_query = request.args.get('search', '')
+
+    # Filter completed tasks based on the search query and order them by department and completed_date
+    completed_tasks_list = Task.query.filter(
+        Task.completed == True,
+        Task.title.ilike(f'%{search_query}%')
+    ).order_by(Task.department, Task.completed_date.desc()).all()
+
+    # Convert `completed_date` and `target_date` to datetime objects
+    for task in completed_tasks_list:
+        if isinstance(task.completed_date, str):
+            task.completed_date = datetime.strptime(task.completed_date, '%Y-%m-%d')
+        if isinstance(task.target_date, str):
+            task.target_date = datetime.strptime(task.target_date, '%Y-%m-%d')
+
+    # Group tasks by department
+    tasks_by_department = {}
+    for task in completed_tasks_list:
+        tasks_by_department.setdefault(task.department, []).append(task)
+
+    return render_template('completed_tasks.html', tasks_by_department=tasks_by_department, search_query=search_query)
+
+@app.route('/count_tasks', methods=['GET'])
+def count_tasks():
+    open_task_count = Task.query.filter_by(completed=False).count()
+    return jsonify({"open_task_count": open_task_count}), 200
+
+@app.route('/delete', methods=['POST'])
+def delete_tasks():
+    try:
+        task_ids = request.json.get('tasks', [])
+        
+        # Check if tasks exist and delete them
+        Task.query.filter(Task.id.in_(task_ids)).delete(synchronize_session=False)
+        db.session.commit()
+        
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting tasks: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 
 @app.route('/create', methods=['GET', 'POST'])
 def create():
@@ -55,22 +107,23 @@ def create():
 
 @app.route('/complete/<int:task_id>', methods=['POST'])
 def complete_task(task_id):
-    if request.is_json:  # Check if the request contains JSON data
+    if request.is_json:
         data = request.get_json()
         completed = data.get("completed", False)
         
-        # Retrieve the task from the database and update completion status
         task = Task.query.get(task_id)
         if task:
             task.completed = completed
             if completed:
-                task.completed_date = datetime.now().date()  # Record completion date
+                task.completed_date = datetime.now().date()
             else:
-                task.completed_date = None  # Clear the completion date when marking incomplete
+                task.completed_date = None
             db.session.commit()
-            return jsonify({"success": True}), 200
-        return jsonify({"success": False, "error": "Task not found"}), 404
-    return jsonify({"success": False, "error": "Unsupported Media Type"}), 415
+
+            # Get updated open task count
+            open_task_count = Task.query.filter_by(completed=False).count()
+            return jsonify({"success": True, "open_task_count": open_task_count}), 200
+    return jsonify({"success": False}), 400
 
 @app.route('/revert/<int:task_id>', methods=['POST'])
 def revert_task(task_id):
